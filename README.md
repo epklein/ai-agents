@@ -21,8 +21,9 @@ This agent is build on top of LangChain ReAct agent. The first feature (Langchai
 3. Set up environment variables: Create a .env file in the root directory and add your API keys and configurations. For example:
 
    ```bash
-   READWISE_API_KEY=your_readwise_api_key
    OPENAI_API_KEY=your_openai_api_key
+   READWISE_API_TOKEN=your_readwise_api_key
+   READWISE_ENDPOINT=https://readwise.io/api/v3
 
 ## Usage
 
