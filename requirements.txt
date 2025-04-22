@@ -1,0 +1,9 @@
+# Core libraries
+
+# Langchain libraries
+langchain
+langchain-community
+langchain-openai
+
+# Vector database usage
+faiss-cpu
