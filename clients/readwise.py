@@ -91,10 +91,7 @@ def _fetch_all_archived_articles():
             print(response.text)
             break
 
-        # Parse the response
         data = response.json()
-
-        # Add articles to our list
         articles.extend(data.get("results", []))
 
         # Check if there are more pages
@@ -143,6 +140,7 @@ def _create_faiss_index(articles):
             "summary": article.get("summary", "") or ""
         })
 
+        # extract years from the article to make it searchable through the metadata
         years = extract_years(article)
 
         doc = Document(
@@ -181,27 +179,20 @@ def extract_years(document, min_year=1900, max_year=2030):
     
     return valid_years
 
-from pydantic import BaseModel
 from langchain.tools import tool
 
-class SearchReadwiseArticlesInput(BaseModel):
-    keywords: str
-    tag: str = None  # Optional tag
-    num_of_results: int = 100  # Default to 100 results
-
-@tool("search_readwise", args_schema=SearchReadwiseArticlesInput)
-def search_readwise_articles(args: str) -> list:
+@tool("search_readwise")
+def search_readwise_articles(keywords: str, author: str = None, site: str = None, tag: str = None, year: int = None, num_of_results: int = 100) -> list:
     """
     Query the FAISS index for articles matching the given keywords.
 
     Args:
-        args (str): A JSON string containing the following keys:
-            - keywords (str): The keywords to search for.
-            - author (str): A specific AUTHOR to filter the results (optional).
-            - site (str): A specific site, newsletter, source, etc. to filter the results (optional).
-            - tag (str): A specific TAG to filter the results (optional).
-            - year (int): A specific YEAR to filter the results (optional).
-            - num_of_results (int): The number of results to return (default is 100).
+        - keywords (str): The keywords to search for.
+        - author (str): A specific AUTHOR to filter the results (optional).
+        - site (str): A specific site, newsletter, source, etc. to filter the results (optional).
+        - tag (str): A specific TAG to filter the results (optional).
+        - year (int): A specific YEAR to filter the results (optional).
+        - num_of_results (int): The number of results to return (default is 100).
 
     Returns:
         list: A list of articles matching the criteria.
@@ -209,30 +200,15 @@ def search_readwise_articles(args: str) -> list:
 
     from clients.readwise import get_all_readwise_articles
 
-    # Parse the JSON string into a dictionary
-    try:
-        args = args.strip().strip('\'').strip('`')
-        args = args.replace('\'', '"')
-        args = json.loads(args)
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
-        return []
-
     [_, faiss_index] = get_all_readwise_articles()
 
-    keywords = args.get("keywords") or ""
+    keywords = keywords or ""
 
-    author = args.get("author")
-    if author:
+    if author: 
         keywords += f" author:{author}"
     
-    site = args.get("site")
     if site:
         keywords += f" site:{site}"
-
-    tag = args.get("tag")
-    year = args.get("year")
-    num_of_results = args.get("num_of_results", 50)
 
     filter=lambda metadata: (
         (tag is None or tag in metadata.get('tags', [])) and

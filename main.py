@@ -1,39 +1,35 @@
 from langchain.chat_models import init_chat_model
-from langchain.vectorstores import FAISS
 
 from dotenv import load_dotenv
+
+# load environment variables from .env file, mostly API keys
 load_dotenv()
 
-model = init_chat_model("gpt-4o-mini", model_provider="openai")
+model = init_chat_model("deepseek-chat", model_provider="deepseek")
 #model = init_chat_model("claude-3-7-sonnet-latest", model_provider="anthropic")
-#model = init_chat_model("llama3.1:latest", model_provider="ollama")
+#model = init_chat_model("gpt-4o-mini", model_provider="openai")
 
-from langchain_core.prompts import PromptTemplate
-from langchain.agents import (
-    create_react_agent,
-    AgentExecutor
-)
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
 
-from langchain import hub
-
-template = """"
-    Return all articles from eduklein.com.br saved in my Readwise account.
-    """
-
-prompt_template = PromptTemplate(
-    template=template
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a helpful assistant."),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}"),
+    ]
 )
 
 from clients.readwise import search_readwise_articles
-tools_for_agent = [ search_readwise_articles ]
+tools = [ search_readwise_articles ]
 
-react_prompt = hub.pull("hwchase17/react")
+agent = create_tool_calling_agent(model, tools, prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-agent = create_react_agent(llm=model, tools=tools_for_agent, prompt=react_prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools_for_agent)
+query = """"
+    Return all articles from eduklein.com.br saved in my Readwise account that explores the Ivy Lee Method.
+    """
 
-result = agent_executor.invoke(
-    input={"input": prompt_template}
-)
+result = agent_executor.invoke({"input": query})
 
 print(result["output"])
